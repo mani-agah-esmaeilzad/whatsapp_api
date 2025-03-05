@@ -15,28 +15,33 @@ public class LogController : ControllerBase
     private static readonly string LogFilePath = "logs.json";
 
     [HttpPost]
-    public async Task<IActionResult> SaveLog([FromForm] LogEntry logEntry, IFormFile image)
+    [HttpPost]
+    public IActionResult SaveLog([FromForm] LogEntry logEntry)
     {
         try
         {
+       
             logEntry.Timestamp = DateTime.UtcNow.ToString("o");
-            logEntry.SystemIp = Dns.GetHostEntry(Dns.GetHostName()).AddressList[0].ToString();
-            logEntry.Platform = "application";
+           
 
-            if (image != null && image.Length > 0)
-            {
-                using (var ms = new MemoryStream())
-                {
-                    await image.CopyToAsync(ms);
-                    logEntry.ImageBase64 = Convert.ToBase64String(ms.ToArray());
-                }
-            }
-
-            List<LogEntry> logs = new();
+            List<LogEntry> logs = new List<LogEntry>();
             if (System.IO.File.Exists(LogFilePath))
             {
                 string existingLogs = System.IO.File.ReadAllText(LogFilePath);
-                logs = JsonSerializer.Deserialize<List<LogEntry>>(existingLogs) ?? new List<LogEntry>();
+                // بررسی اینکه محتوای فایل خالی نباشد
+                if (!string.IsNullOrWhiteSpace(existingLogs))
+                {
+                    try
+                    {
+                        logs = JsonSerializer.Deserialize<List<LogEntry>>(existingLogs) ?? new List<LogEntry>();
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        // در صورت خطا در پردازش JSON، یک لیست خالی ایجاد می‌کنیم
+                        Console.WriteLine($"خطا در پردازش JSON: {jsonEx.Message}");
+                        logs = new List<LogEntry>();
+                    }
+                }
             }
 
             logs.Add(logEntry);
